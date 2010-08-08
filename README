@@ -1,0 +1,27 @@
+This is ZINC version 0.1.
+
+ZINC is a variant of "Core War". Core War is a game in which programmes
+(called "warriors") fight to take control of a virtual computer. The
+programmes are written in a simple language called Redcode and executed
+by a simulator called Memory Array Redcode Simulator (MARS).
+
+The ZINC User Manual contains more information on Core War, including
+a tutorial for beginners and a complete reference for Core War as
+implemented by ZINC.
+
+The file "INSTALL" contains instructions for building and installing ZINC.
+
+The "src" folder contains the source code for the implementation of ZINC.
+The "doc" folder contains the source for the ZINC User Manual. The
+"examples" folder contains some sample warriors.
+
+ZINC is distributed under the terms of the BSD Licence. See the file
+"LICENCE" for details.
+
+Send your feedback on ZINC to its author Ranjit Mathew <rmathew@gmail.com>.
+
+For more information on Core War, see:
+
+  http://en.wikipedia.org/wiki/Core_War
+  http://www.koth.org/
+  http://www.corewar.info/

@@ -1,0 +1,52 @@
+Quick Installation:
+-------------------
+
+  Execute "make" in the top-level folder of the ZINC distribution. The
+programme "zinc" is created in the "src" folder and the manual "zinc.html"
+is created in the "doc" folder.
+
+
+Details:
+--------
+
+  ZINC is implemented in C. To build ZINC, you need a C compiler that
+accepts the basic constructs of the C99 standard like support for stdint.h
+and stdbool.h, mixed statements and variable declarations, //-style comments,
+etc. Full C99 compliance is *not* necessary. GCC 3.3 or better is
+recommended. Other compilers should work, though I haven't checked building
+ZINC with anything other than GCC.
+
+The ZINC graphical user interface uses the Simple DirectMedia Layer (SDL)
+from http://www.libsdl.org/. You should have both the "developer" and
+"runtime" portions of SDL and running "sdl-config" should give the correct
+compiler and linker flags for building SDL programmes.
+
+The ZINC User Manual is written using the Texinfo markup language, so that
+a single source file can be used to create the manual in HTML, PDF and other
+formats. You need GNU Texinfo 4.4 or better to create the manual in HTML and
+Info formats. You also need TeX if you want to create the manual in PDF.
+
+ZINC has very simple make files - they have been written assuming that GNU
+Make 3.79.1 or better is available, but this can be easily rectified. Ditto
+for the assumption that a UNIX-like build environment is available.
+
+ZINC was developed on Linux, so it should readily build with a modern
+Linux distribution. Even on Windows, ZINC can be readily built using
+MinGW and MSYS assuming you install the mingw32 version of the SDL
+development library from http://www.libsdl.org/.
+
+To build ZINC, just execute "make" from the top-level folder. If the build
+was successful, you get a "zinc" executable in the "src" folder and the ZINC
+User Manual in HTML format in the "doc" folder. If you prefer PDF to HTML,
+execute "make zinc.pdf" in the "doc" folder to create the manual in PDF.
+Similarly execute "make zinc.info" in the "doc" folder if you prefer to
+create the manual in Info format.
+
+To clean up after a build, execute "make clean" from the top-level folder.
+
+NOTE:
+----
+SDL redirects the standard output and error streams on Windows to text
+files named "stdout.txt" and "stderr.txt" respectively. You must use the
+wrapper batch script "zinc.bat" on Windows instead of invoking "zinc.exe"
+directly, otherwise you will miss important diagnostic messages.

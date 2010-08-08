@@ -1,0 +1,22 @@
+  nam "Imp Ring"
+  ver "1.0"
+  aut "A. Ivner"
+
+  ; Spawn three mutually sustaining Imps that rapidly move through the
+  ; core as far apart as possible to overwhelm an opponent. The magic
+  ; number 2666 assumes a core of size 8000 and should be adjusted for
+  ; other core sizes.
+  ;
+  ; See Steven Morrell's book on Core War for detailed explanation.
+
+  org start
+
+c:
+  jmp $(imp - 2666)
+
+start:
+  spl $c
+  spl $(imp + 2667)
+
+imp:
+  mov $0, $2667

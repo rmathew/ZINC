@@ -1,0 +1,34 @@
+  nam "Mice"
+  aut "Chip Wendell"
+  ver "1.0"
+ 
+  ; The winner of the first ever Core War tournament.
+  ;
+  ; Rapidly create as many copies as possible of the programme (just like
+  ; real-world mice) to become very difficult to eradicate.
+
+  def PROG_SIZE = end - ptr
+  def LEAP = 832
+  def NEXT_STOP = 653
+
+  org start
+
+ptr:
+  dat #0
+
+start:
+  mov #(PROG_SIZE - 1), $ptr
+
+loop:
+  sub #1, $target
+  mov @ptr, @target
+  sub #1, $ptr
+  jmn $ptr, $loop
+
+  spl @target
+  add #NEXT_STOP, $target
+  jmz $ptr, $start
+
+target:
+  dat #(LEAP + 1)
+end:

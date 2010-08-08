@@ -1,0 +1,37 @@
+%{
+/* Copyright (c) 2006 Ranjit Mathew. All rights reserved.
+ * Use of this source code is governed by the terms of the BSD licence
+ * that can be found in the LICENCE file.
+ */
+
+/*
+  Keyword definitions for using with GNU gperf.
+*/
+%}
+struct keyword
+{
+  const char *name;
+  token_val_t val;
+};
+const struct keyword *find_keyword (const char *str, unsigned int len);
+%%
+DAT, TK_DAT
+MOV, TK_MOV
+ADD, TK_ADD
+SUB, TK_SUB
+MUL, TK_MUL
+DIV, TK_DIV
+MOD, TK_MOD
+JMP, TK_JMP
+JMZ, TK_JMZ
+JMN, TK_JMN
+SKL, TK_SKL
+SKE, TK_SKE
+SKN, TK_SKN
+SKG, TK_SKG
+SPL, TK_SPL
+ORG, TK_ORG
+NAM, TK_NAM
+VER, TK_VER
+AUT, TK_AUT
+DEF, TK_DEF

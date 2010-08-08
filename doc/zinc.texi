@@ -1,0 +1,209 @@
+\input texinfo
+@setfilename zinc.info
+@settitle ZINC User Manual
+@set VERSION 0.1
+@afourpaper
+
+@copying
+This is the manual for ZINC version @value{VERSION}.
+
+Copyright @copyright{} 2006 Ranjit Mathew. All rights reserved.
+
+@quotation
+Redistribution and use in source (Texinfo) and 'compiled' forms (HTML,
+PDF, PostScript and so forth) with or without modification, are permitted
+provided that the following conditions are met:
+
+  1. Redistributions of source code (Texinfo) must retain the above
+     copyright notice, this list of conditions and the following
+     disclaimer.
+
+  2. Redistributions in compiled form (converted to HTML, PDF, PostScript
+     and other formats) must reproduce the above copyright notice, this
+     list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+THIS DOCUMENTATION IS PROVIDED BY THE AUTHORS "AS IS" AND ANY EXPRESS
+OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+IN ANY WAY OUT OF THE USE OF THIS DOCUMENTATION, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+@end quotation
+
+@end copying
+
+@titlepage
+@title ZINC User Manual
+@subtitle Version @value{VERSION}
+@author Ranjit Mathew <@email{rmathew@@gmail.com}>
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+
+@end titlepage
+
+@c Generate table of contents.
+@contents
+
+@c Create the top node for Info documentation.
+@ifnottex
+
+@node Top
+@top ZINC User Manual
+@insertcopying
+
+@menu
+* Introduction:: Introduction to ZINC.
+* Core War Guide:: How to play Core War using ZINC.
+* Core War Reference:: Details on Core War as implemented by ZINC.
+* ZINC Internals:: Implementation details of ZINC.
+* Background Information:: A brief history of Core War and ZINC.
+@end menu
+
+@end ifnottex
+
+
+@c We fork off each big chapter into a file of its own to improve the
+@c maintainability of this manual.
+
+@include intro.texi
+
+@include guide.texi
+
+@include ref.texi
+
+@include design.texi
+
+
+@node Background Information
+@appendix Background Information
+
+This appendix provides a brief introduction to the history of the game
+of Core War and why I chose to write ZINC that implements a non-standard
+dialect of Redcode.
+
+@menu
+* History:: A brief history of the game of Core War.
+* Rationale:: The rationale for creating ZINC.
+@end menu
+
+@node History
+@appendixsec History
+
+Core War was created by A. K. Dewdney with the help of his student David
+Jones and first described in May 1984 in the ``Computer Recreations''
+column that he used to write regularly for @cite{Scientific American}.
+The game quickly gained popularity and Mr Dewdney wrote two more articles
+about Core War containing more details as well as minor tweaks to the
+original game and a report of the first Core War tournament. These three
+articles (as well as other popular articles in the column) were also
+published his book @cite{The Armchair Universe: An Exploration of
+Computer Worlds}. Mr Dewdney and Mr Jones also distributed a document
+called @cite{Core War Guidelines} to eager Core War enthusiasts and this
+document formed the initial standard reference for Core War.
+
+Shortly after Core War gained in popularity, enthusiasts formed the
+International Core War Society (ICWS) to standardise the game, meet
+other Core War players, hold Core War tournaments, exchange warriors
+and warrior strategies, etc. The Core War standards and drafts
+adopted by ICWS are named after the years in which they were published
+(1986, 1988 and 1994) and are popularly referred to as simply
+ICWS-86, ICWS-88 and ICWS-94 respectively. ICWS-86 was the same as the
+@cite{Core War Guidelines} document distributed by Mr Dewdney and Mr Jones.
+These days Core War enthusiasts use the USENET newsgroup
+@code{rec.games.corewar} to share warrior strategies and discuss other
+things of mutual interest. The most popular (and de-facto standard)
+implementation of MARS is the ``@uref{http://corewar.sourceforge.net/,pMars}''
+programme. Websites like @uref{http://www.koth.org/} and
+@uref{http://www.corewar.info/} contain a fair amount of information for
+a person interested in learning about Core War.
+
+@node Rationale
+@appendixsec Rationale
+
+I was introduced to Core War in 1993 via Mr Dewdney's book @cite{The Armchair
+Universe}. Since I did not have any access to the Internet at that time, I
+wrote a simple Redcode assembler and MARS implementation for MS-DOS running
+on the IBM PC using Borland's Turbo C so that a couple of my friends and I
+could play Core War. Unfortunately, I stopped playing Core War after a couple
+of months and was subsequently distracted by other things.
+
+Recently (circa 2006) I strongly felt like playing Core War again.
+However, I was dismayed to find out that the Redcode language had evolved
+to become unnecessarily complicated and idiosyncratic for beginners, most
+notably with opcode modifiers, side-effects in instructions, asymmetric
+instructions, modulo arithmetic, P-Space, etc. Moreover, the popular MARS
+implementations did not seem to encourage people to watch a battle unfold.
+I personally consider much of the fun in the game of Core War to be the
+vicarious thrill you experience as you watch your creation fight it out
+with an opponent inside MARS.
+
+So I decided to create a simpler and more symmetric dialect of Redcode
+that I would like to work with and that should be more accessible to
+beginners. My original MARS implementation (circa 1993) neither accepted
+the Redcode dialect I had in mind nor ran on Linux which is my favourte
+environment. I therefore decided to write a new MARS implementation for
+myself using the Simple DirectMedia Layer (@uref{http://www.libsdl.org/,SDL})
+so that it could easily run on both Windows and Linux. The working title for
+this project was ``ZINC'', which recursively stood for ``ZINC Is Not CoreWar''
+in the grand old unnecessarily-rebellious programme-naming tradition of
+hackers everywhere. I grew so fond of this name that I decided to keep it
+even though there are other publicly-released programmes that have the same
+name. For a while I even thought of calling it ``RAMbush'' instead, but that
+sounded a bit corny and hardly as cool as ``ZINC''.
+
+Since I did not want to change the semantics of Core War too much or
+introduce totally alien instructions, I ended up retaining things like
+the @code{A} and @code{B} fields which made the detailed descriptions
+in @ref{Core War Reference} unnecessarily complex. The dialect of Redcode
+implemented by ZINC is designed to allow simple translations of warriors
+that the user is likely to find in the ``wild'', but there are still
+some shortcomings due to the decision to not have side-effects on 
+executing an instruction. For example, the following Imp Gate in ICWS-94:
+@verbatim
+  JMP 0, <-1
+@end verbatim
+@noindent
+when translated into the Redcode dialect implemented by ZINC:
+@verbatim
+  MOV #0, $-1
+  JMP $-1
+@end verbatim
+@noindent
+is only effective half of the time on an average. The instruction set
+is also not as minimal as it could be. For example, I have not seen
+many actual warriors use the @code{MUL}, @code{DIV} and @code{MOD}
+instructions. Some instruction groups like @samp{@code{SKL}, @code{SKE},
+@code{SKN}, @code{SKG}} and @samp{@code{JMZ}, @code{JMN}} have inherent
+redundancies but have been retained to allow as straight an expression
+of a player's algorithm as possible since the size of a warrior is of
+utmost importance in Core War. Despite all these shortcomings, I still
+feel that the dialect of Redcode implemented by ZINC is simple enough
+to be picked up by beginners who were otherwise reluctant to try out
+Core War and by simpletons like me who like their tools to be as simple
+as possible.
+
+A decision that might possibly irk some users is that the ZINC Redcode
+assembler does not recognise TAB characters as whitespace. This is a
+conscious decision to encourage users to use actual spaces for indentation
+rather than inserting TAB characters. You almost never mean to insert
+an actual TAB character but merely use the @key{TAB} key as a quick
+shortcut to align the cursor with the desired indentation level. However,
+TAB characters mess up the display of the programme for other users
+with different TAB settings or within email messages, contextual
+diffs, etc. A far better alternative is to configure your text editor to
+insert the appropriate number of spaces when you press the @key{TAB} key.
+Any decent text editor supports configuring this behaviour. For example,
+the VIM editor supports the @samp{@code{set expandtab}} command for
+achieving this behaviour. An excellent article on this issue is
+``@uref{http://www.jwz.org/doc/tabs-vs-spaces.html,Tabs versus Spaces: An
+Eternal Holy War}'' by Jamie Zawinski.
+
+@bye

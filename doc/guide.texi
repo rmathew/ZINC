@@ -1,0 +1,679 @@
+@node Core War Guide
+@chapter Core War Guide
+
+This chapter introduces you to the game of Core War and the Redcode
+language as implemented by ZINC. It presents a number of classic
+warriors of increasing complexity that introduce you to various
+aspects of Core War.
+
+@menu
+* Basics:: A quick introduction to the basics of Core War and Redcode.
+* Imp:: A very simple warrior.
+* Dwarf:: A very simple bomber warrior.
+* Gemini:: A simple replicator warrior.
+* Mice:: A replicator warrior with prolific task-spawning.
+* Strategies:: Some basic Core War strategies.
+* Further Reading:: Core War resources available elsewhere.
+@end menu
+
+
+@node Basics
+@section Basics
+
+This section gives you a quick overview of the basics of Core War.
+Do not worry if it looks a bit intimidating on the first reading.
+The example warriors in the following sections will gradually
+introduce you to the game of Core War and help you understand
+these concepts. You might want to quickly skim through this section,
+work your way through the examples and then come back to this section.
+
+In the game of Core War your aim is to write a warrior programme in
+a simple language known as ``Redcode'' such that your programme destroys
+your opponent's programme. The battle takes place in the memory, or ``core'',
+of a computer simulated by a @acronym{MARS, Memory Array Redcode Simulator}
+programme. ZINC is a MARS implementation that accepts a variant of
+the original Redcode language.
+
+The core is a sequence of @dfn{cells}. Each cell can hold a single
+Redcode @dfn{instruction} (including its operands) that specifies what
+is to be done when ZINC executes it. Every cell has an @dfn{address}
+in the range @samp{@code{0}} to @samp{@var{CORE_SIZE} @minus{} @code{1}},
+where @var{CORE_SIZE} is the total number of cells in the core (8,000 by
+default). Cell addresses beyond this range are always @dfn{normalised}
+by ZINC to be within this range by repeatedly adding or subtracting
+@var{CORE_SIZE} as necessary till they fall within this range. For example,
+the address @code{@minus{}2} is normalised to @samp{@code{@minus{}2 + 8,000}},
+or @code{7,998}, with a @var{CORE_SIZE} of 8,000. Similarly the address
+@code{8,016} is normalised to @samp{@code{8,016 @minus{} 8,000}}, or
+@code{16}, with a @var{CORE_SIZE} of 8,000. The net effect of this
+normalisation is that you can consider the core to be a circular list
+of cells such that you get back to cell @code{0} if you try to go beyond
+cell @samp{@var{CORE_SIZE} @minus{} @code{1}}.
+
+A warrior programme is just a sequence of Redcode instructions.
+ZINC loads a warrior programme into a random area in the core such
+that there is a minimum guaranteed separation (usually 1,000 cells
+for a core of size 8,000) between two warrior programmes.
+
+The absolute cell addresses are @emph{never} exposed to the warriors.
+There is no way for a warrior to know where in the core it has been
+loaded into or where in the core its opponent is loaded.
+
+ZINC maintains a @dfn{programme counter} (PC) that indicates the
+address of the cell containing the instruction that would be executed
+next. Each instruction is executed in a single @dfn{cycle}. ZINC normally
+executes the instructions in a warrior programme in the given sequence
+unless the execution of an instruction causes it to jump elsewhere or
+to kill the warrior. If there is more than one warrior, the warriors
+execute alternately on every cycle.
+
+The general form of a Redcode instruction in a warrior programme file is:
+@example
+@var{op} @var{src}, @var{dest}
+@end example
+@noindent
+where @var{op} is the mnemonic for the instruction (e.g.
+@samp{@code{ADD}}, @samp{@code{MOV}}, etc.) and @var{src} and
+@var{dest} are the source and destination cell addresses respectively.
+Instruction mnemonics in an input file are case-insensitive -- you
+can write @samp{@code{MOV}}, @samp{@code{mov}}, @samp{@code{Mov}}, etc.
+
+ZINC understands the following Redcode instructions:
+
+@itemize
+
+@item @code{DAT} ---
+Stores data. An attempt to execute this instruction results in the warrior
+being killed.
+
+@item @code{MOV} ---
+Moves the content of the source cell to the destination cell.
+
+@item @code{ADD} ---
+Adds the content of the source cell to the content of the destination
+cell.
+
+@item @code{SUB} ---
+Subtracts the content of the source cell from the content of the
+destination cell.
+
+@item @code{MUL} ---
+Multiplies the content of the destination cell by the content of the
+source cell.
+
+@item @code{DIV} ---
+Divides the content of the destination cell by the content of the source
+cell. If the content of the source cell is @code{0}, the warrior is
+killed.
+
+@item @code{MOD} ---
+Divides the content of the destination cell by the content of the source
+cell and leaves the remained (modulus). If the content of the source cell
+is @code{0}, the warrior is killed.
+
+@item @code{JMP} ---
+Jumps to the destination cell.
+
+@item @code{JMZ} ---
+Jumps to the destination cell if the content of the source cell is zero.
+
+@item @code{JMN} ---
+Jumps to the destination cell if the content of the source cell is not zero.
+
+@item @code{SKL} ---
+Skips the next instruction if the content of the source cell is less than
+the content of the destination cell.
+
+@item @code{SKE} ---
+Skips the next instruction if the content of the source cell is equal to
+the content of the destination cell.
+
+@item @code{SKN} ---
+Skips the next instruction if the content of the source cell is not equal to
+the content of the destination cell.
+
+@item @code{SKG} ---
+Skips the next instruction if the content of the source cell is greater than
+the content of the destination cell.
+
+@item @code{SPL} ---
+Spawns a new task for the warrior that begins execution at the destination
+cell, while the original task continues execution at the next cell.
+
+@end itemize
+
+All operands are normalised before execution as described earlier. The
+operand for a Redcode instruction has an @dfn{addressing mode} which is
+one of the following:
+@itemize
+
+@item @dfn{Immediate} --- the operand itself is the datum. This mode
+is indicated by an octothorpe or a hash sign (@samp{@code{#}}) before the
+operand. For example, the instruction @samp{@code{DAT #5}} asks ZINC to
+store the number @code{5} in the current cell.
+
+@item @dfn{Direct} --- the operand represents the offset of the desired cell
+from the current cell. This mode is indicated by a dollar sign (@samp{$})
+before the operand. For example, the instruction
+@samp{@code{ADD $@minus{}1, $2}} asks ZINC to add the content of the
+previous cell to the content of the cell two cells away from the current
+cell.
+
+@item @dfn{Indirect} --- the operand represents the offset of a cell
+from the current cell that contains the offset @emph{from that cell}
+of the desired cell. This mode is indicated by an at sign (@samp{@@})
+before the operand. For example, the instruction @samp{@code{MOV #0, @@5}}
+asks ZINC to first locate the fifth cell from the current cell, get its
+content, say @samp{@code{100}}, locate the hundredth cell from that
+cell and move the number @code{0} into it.
+
+@end itemize
+
+Note that only @emph{relative} addressing is supported -- you cannot directly
+refer to the absolute address of a cell. This is somewhat different
+from assembly languages for normal CPUs and might take some time to get
+used to. However, relative addressing is what allows your warrior
+programme to work correctly no matter where in the core it is loaded.
+
+The default @var{CORE_SIZE} is 8,000 cells, but you should @emph{not}
+depend on it always being this size. You @emph{can} however depend on
+it being a multiple of 4. Every cell in the core is initialised to
+@samp{@code{DAT #0}} before a battle begins and the warriors are loaded.
+@samp{@code{DAT #0}} is encoded by ZINC as a sequence of all zeros,
+so setting a cell to 0 is the same as placing the instruction
+@samp{@code{DAT #0}} into that cell.
+
+The examples in the following sections will help you understand
+these concepts better. Once you are comfortable with the basics
+of Core War, you can refer to @ref{Core War Reference} for more
+details while writing your own warrior programmes.
+
+
+@node Imp
+@section Imp
+
+Imp is a very simple warrior. In fact, it has just one instruction:
+
+@verbatim
+    MOV $0, $1
+@end verbatim
+
+Recall that Core War uses relative addressing and @samp{$} represents
+the direct addressing mode. So @samp{$0} represents the current cell
+and @samp{$1} represents the next cell. This instruction therefore
+tells ZINC to copy the content of the current cell into the next cell.
+
+Here is an illustration of this process assuming that Imp was loaded
+randomly into the address 1,000. Note that every cell in the core is
+initialised to @samp{@code{DAT #0}} before warriors are loaded. Before
+the instruction is executed, the relevant portion of the core looks like:
+
+@verbatim
+	  0999: DAT #0
+    PC -> 1000: MOV $0, $1
+	  1001: DAT #0
+	  1002: DAT #0
+@end verbatim
+
+After the instruction is executed, since ZINC normally increments the
+programme counter (PC), the core now looks like:
+
+@verbatim
+	  0999: DAT #0
+	  1000: MOV $0, $1
+    PC -> 1001: MOV $0, $1
+	  1002: DAT #0
+@end verbatim
+
+So ZINC would find the same instruction for execution in the next cycle
+which would again have the same effect and so on. Imp therefore acts like
+a juggernaut and ploughs its way through the core. At the last cell, Imp
+just wraps back to the first cell and continues as before. Imp might look
+very simple, but it moves @emph{very} fast through the core and
+mercilessly overwrites all warrior programmes it finds on its way. More
+often than not, it turns a careless opponent warrior into a copy of itself.
+
+To see Imp in action, just copy its code:
+@verbatim
+    MOV $0, $1
+@end verbatim
+@noindent
+into a text file named, say, @file{imp.zinc} and invoke ZINC as
+@samp{@command{zinc} imp.zinc}. Of course, Imp will always
+exhaust all the available cycles if it is the only warrior loaded
+into core and is not terribly exciting. Just for fun, try loading
+the other warriors in the @file{examples} folder along with Imp
+and see the results of the battles between Imp and these warriors.
+
+
+@node Dwarf
+@section Dwarf
+
+Dwarf is a simple offensive warrior that bombs the core at regular
+intervals in the hopes of fatally wounding its opponent. It looks
+like this:
+
+@verbatim
+      ORG start
+
+      DAT #0
+    start:
+      ADD #4, $-1
+      MOV #0, @-2
+      JMP $-2
+@end verbatim
+
+Before we understand how this programme works, there are a couple of
+interesting things to observe about it:
+
+@itemize
+@item
+@samp{@code{ORG}} is not a Redcode instruction -- it is an @dfn{assembler
+directive} that tells the Redcode assembler to ask ZINC to begin executing
+the warrior at a different instruction than the default first instruction.
+
+@item
+@samp{start} is a @dfn{label} that denotes an instruction in the warrior
+programme. A label must be defined on a line of its own just before the
+instruction it represents. The label name should always be followed by a
+colon (@samp{:}) and is case-insensitive. You can use a label in an
+assembler directive or an instruction. You can use a label even before
+it is defined, as in the programme above.
+@end itemize
+
+To illustrate how Dwarf works, let us assume that Dwarf was loaded randomly
+into the core at the address 7,125 and that the @var{CORE_SIZE} is 8,000.
+Remember that the instruction operands are normalised before execution, so
+@samp{@minus{}1} gets translated to @samp{7,999} and @samp{@minus{}2} gets
+translated to @samp{7,998}. (To see how your programmes look after being
+assembled and after the instruction operands are normalised, invoke
+@command{zinc} with the @option{-d} option.) Before the execution of Dwarf
+begins, the relevant portion of the core looks like:
+
+@verbatim
+	  7125: DAT #0
+    PC -> 7126: ADD #4, $7999
+	  7127: MOV #0, @7998
+	  7128: JMP $7998
+@end verbatim
+
+Recall that the core behaves just like a circular list of cells, so the
+@code{ADD} instruction adds the number 4 to the cell 7,999 cells forward from
+the current cell, which is the same as the cell just before the current
+cell since @var{CORE_SIZE} is 8,000. After the instruction is executed, the
+core looks like:
+
+@verbatim
+	  7125: DAT #4
+	  7126: ADD #4, $7999
+    PC -> 7127: MOV #0, @7998
+	  7128: JMP $7998
+@end verbatim
+
+Remember that @samp{@@} indicates the indirect addressing mode, which means
+that the operand points to an interim cell that in turn points to the
+desired cell relative to its own position. The @code{MOV} instruction
+therefore places a 0 (which is the same as a @samp{@code{DAT #0}} instruction)
+into the cell pointed to by the cell two cells before the current cell. Since
+the cell two cells before the current cell contains a 4 and is at address
+7,125, the final destination cell is at address @math{7,125 + 4} or 7,129.
+After the instruction is executed, the core looks like:
+
+@verbatim
+	  7125: DAT #4
+	  7126: ADD #4, $7999
+	  7127: MOV #0, @7998
+    PC -> 7128: JMP $7998
+	  7129: DAT #0
+@end verbatim
+
+The @code{JMP} instruction causes the execution to go back to the @code{ADD}
+instruction. The core now looks like:
+
+@verbatim
+	  7125: DAT #4
+    PC -> 7126: ADD #4, $7999
+	  7127: MOV #0, @7998
+	  7128: JMP $7998
+	  7129: DAT #0
+@end verbatim
+
+After the @code{ADD} instruction is executed, the core looks like:
+
+@verbatim
+	  7125: DAT #8
+	  7126: ADD #4, $7999
+    PC -> 7127: MOV #0, @7998
+	  7128: JMP $7998
+	  7129: DAT #0
+@end verbatim
+
+The @code{MOV} instruction now moves a 0 to the cell at address
+@math{7,125 + 8} or 7,133. On the next iteration through the loop,
+it moves a 0 to the cell at address @math{7,125 + 12} or 7,137,
+on the iteration after that to the cell at address 7,141, and so on.
+So it bombs every fourth location in the core. Since the core wraps
+around, Dwarf could be in danger of bombing itself and committing suicide.
+However, it does not -- since it is just 4 instructions long and
+@var{CORE_SIZE} is guaranteed to be a multiple of 4, a bomb lands on
+the instruction at the address 7,125 (thereby resetting the counter
+to 0) and the next bomb lands on the instruction at the address 7,129,
+leaving Dwarf unscathed. Load Dwarf in ZINC to see this process in
+action. Load Dwarf with the other warriors in the @file{examples} folder
+to see how it fares against them.
+
+Dwarf is a warrior with a simple strategy for offence -- bomb every fourth
+location in the core -- and no strategy for defence. It is small in size
+and very fast, but it is still vulnerable to being overwritten by an Imp
+which is three times as fast. It is not very effective against warriors
+that move around in the core or which spawn many tasks.
+
+Before we leave Dwarf, note that we could have rewritten Dwarf to
+make better use of labels and make it more readable. Here is an
+example:
+
+@verbatim
+      ORG start
+
+    target:
+      DAT #0
+    start:
+      ADD #4, $target
+      MOV #0, @target
+      JMP $start
+@end verbatim
+
+Verify that the above indeed compiles to the code we showed earlier
+by invoking @command{zinc} with the @option{-d} option.
+
+
+@node Gemini
+@section Gemini
+
+Gemini is a simple defensive warrior that hopes to evade enemy fire
+by moving around in the core. It copies all its instructions to a
+new location in the core and then jumps to the new location. It looks
+like this:
+
+@verbatim
+      NAM "Gemini"
+      AUT "A. K. Dewdney"
+      VER "1.0"
+
+      ORG start
+
+      ; The total size of our programme.
+      DEF PROG_SIZE = end - source
+
+      ; The distance between our copy and ourselves.
+      DEF LEAP = 101
+
+    source:
+      DAT #0
+
+    target:
+      DAT #(LEAP - (target - source))
+
+    start:
+      MOV @source, @target
+      SKN $source, #(PROG_SIZE - 1)
+      JMP $jmp2copy
+      ADD #1, $source
+      ADD #1, $target
+      JMP $start
+
+    jmp2copy:
+      MOV #(LEAP - (target - source)), $(LEAP - (jmp2copy - target))
+      JMP $(LEAP - (jmp2copy - target))
+    end:
+@end verbatim
+
+This programme illustrates some more features of the Redcode language:
+@itemize
+
+@item
+@code{NAM}, @code{AUT} and @code{VER} are assembler directives that
+indicate the name of the warrior, the author of the warrior and the
+current version of the warrior, respectively. This information is shown
+in the ZINC user interface and helps to properly identify the warriors
+in a battle.
+
+@item
+The semi-colon (@samp{;}) indicates the beginning of a comment. Everything
+after it is ignored by the Redcode assembler. A comment can be inserted
+on a line by itself or after an assembler directive, label or an instruction.
+
+@item
+@code{DEF} is an assembler directive that allows you to give meaningful
+names to constant expressions by defining a symbol to be equal to that
+expression. This improves the readability of your programme. It also
+makes your programme more flexible since you can just change the
+definition of a constant in a single place instead of having
+to find every place where it is used and modifying the value.
+
+@item
+You can use expressions involving numbers, labels and definition symbols
+in your programme instead of just single numbers or labels. Expressions
+can include addition (@samp{+}), subtraction (@samp{@minus{}}),
+multiplication (@samp{*}), division (@samp{/}) and modulus (@samp{%})
+operations. You can group sub-expressions using parentheses (@samp{(} and
+@samp{)}). Multiplication, division and modulus have a higher priority
+than addition and subtraction. When using an expression as an operand
+for an instruction, you must enclose it within parentheses.
+
+@end itemize
+
+You should now be able to work out by yourself how Gemini works. Just
+remember that @code{SKN} stands for ``Skip if not equal'' and makes ZINC
+skip the instruction following the current instruction if the operands of
+the current instruction are not equal. You might want to invoke
+@command{zinc} with the @option{-d} option to see what Gemini is compiled
+into. Load it into ZINC to see it in action.
+
+Gemini is not very effective and wins very few battles. However, it
+illustrates how Core War warriors can easily move around in the core
+to evade attacks from their opponents. This is something that is not
+readily possible in conventional high-level programming languages.
+
+
+@node Mice
+@section Mice
+
+Mice was the winner of the first ever Core War tournament and was
+created by Chip Wendell. Mice rapidly creates many copies of itself,
+each of which again create copies of themselves, and so on. This is
+just like the behaviour of real-world mice. Because of this rapid
+proliferation, it is very difficult to kill all copies of Mice in
+the core. Mice looks like this:
+
+@verbatim
+      NAM "Mice"
+      AUT "Chip Wendell"
+      VER "1.0"
+
+      DEF PROG_SIZE = end - ptr
+      DEF LEAP = 832
+      DEF NEXT_STOP = 653
+
+      ORG start
+
+    ptr:
+      DAT #0
+
+    start:
+      MOV #(PROG_SIZE - 1), $ptr
+
+    loop:
+      SUB #1, $target
+      MOV @ptr, @target
+      SUB #1, $ptr
+      JMN $ptr, $loop
+
+      SPL @target
+      ADD #NEXT_STOP, $target
+      JMZ $ptr, $start
+
+    target:
+      DAT #(LEAP + 1)
+    end:
+@end verbatim
+
+The most important thing to note in this programme is the @code{SPL}
+instruction. This instruction splits execution of the warrior programme
+so that there are now two simultaneous tasks for the warrior programme --
+one continuing with the execution at the next instruction and one starting
+execution at the instruction given as the operand to @code{SPL}. This is
+very similar to multithreading in common operating systems. Splitting
+execution like this allows you to do two things at once and is a very
+powerful feature of the Redcode language.
+
+Note that the two tasks now have to share the slice of time allocated
+to the warrior. To illustrate this point, let us assume that we have
+two warriors loaded into the core denoted by @var{W1} and @var{W2}
+respectively. By default, they each have a single task running, say,
+@var{T11} and @var{T21} respectively. ZINC schedules these tasks like this:
+
+@itemize
+@item @dots{}
+@item @var{T11}
+@item @var{T21}
+@item @var{T11}
+@item @var{T21}
+@item @dots{}
+@end itemize
+
+@noindent
+Now let us assume that @var{W1} spawns a new task, say, @var{T12} via
+the @code{SPL} instruction. ZINC schedules these tasks like this:
+
+@itemize
+@item @dots{}
+@item @var{T11}
+@item @var{T21}
+@item @var{T12}
+@item @var{T21}
+@item @var{T11}
+@item @var{T21}
+@item @var{T12}
+@item @var{T21}
+@item @dots{}
+@end itemize
+
+@noindent
+So @code{SPL} lets you do two things at once, but each of the two
+tasks run at only half the speed as the original task. Still @code{SPL}
+is a very handy instruction and lots of warriors use it in very clever
+ways. A @emph{big} advantage is that your warrior gets multiple ``souls''
+and the other warrior has to kill every surviving task of your warrior before
+it can claim victory. If you still prefer a single-tasking mode, you can
+invoke @command{zinc} with the @option{-s} option that effectively turns
+the @code{SPL} instruction into a no-operation.
+
+There is a limit to the number of tasks that can be spawned by
+a warrior programme. Beyond this limit, the @code{SPL} has no
+effect. A warrior programme that spawns many tasks is declared
+dead only when all the tasks spawned by it are killed.
+
+A little detail to note is that when a task executes the @code{SPL}
+instruction, the new task is put on the warrior's task-queue
+@emph{after} the original task. This might look like an insignificant
+detail, but is actually vital to the correct operation of several
+warriors.
+
+As before, you should now be able to work out how Mice works. Load
+it up in ZINC to see the massive proliferation in action and with
+other warriors in the @file{examples} folder to see how they far
+against Mice.
+
+
+@node Strategies
+@section Strategies
+
+A good way of quickly picking up good strategies is to learn
+from other players. The resources in @ref{Further Reading} should
+provide a good starting point and reading the warriors coded by
+other players is a great way of learning.
+
+As you get more comfortable with the game of Core War, you will
+realise that the more complicated your warrior, the more sluggish
+it runs -- dumber warriors with fewer instructions move faster
+and can easily overwhelm your warrior even though it might be
+more sophisticated. In fact, there is no single strategy that
+will definitely win against all the warriors out there.
+
+A popular way of classifying warriors is inspired by the game
+of ``Rock-Paper-Scissors'' -- scissors cut paper, paper covers
+rock and rock breaks scissors. These classes are roughly
+defined as follows:
+
+@itemize
+
+@item
+@dfn{Rock} warriors bomb the core at regular intervals in the
+hopes of fatally wounding their opponent. Dwarf (see @ref{Dwarf})
+is such a warrior.
+
+@item
+@dfn{Paper} warriors make repeated copies of themselves and
+execute them in parallel. Mice (see @ref{Mice}) is such a warrior.
+
+@item
+@dfn{Scissors} warriors hunt out their prey and then either stun
+them with @code{SPL $0} or kill them with @code{DAT #0}.
+
+@end itemize
+
+@noindent
+You can see for yourself how closely these warrior classes mirror
+the game they are named after.
+
+
+@node Further Reading
+@section Further Reading
+
+Here are a few external resources that will help you learn more
+about the game of Core War and the different strategies adopted
+by the winners:
+
+@table @uref
+
+@item http://en.wikipedia.org/wiki/Core_War
+The Wikipedia article on Core War lacks details but gives the reader
+a fair overview of the game. It also links to a lot of useful
+and interesting external resources.
+
+@item http://www.koth.org/
+@acronym{KOTH,King Of The Hill} has a lot of resources on Core
+War and hosts a continuous tournament from which it derives its
+name. Check out the ``info'' section for some great tutorials
+and benchmark warriors to see how good your own warriors are
+when compared to some of best warriors created by other players.
+
+@item http://www.corewar.info/
+This is another site with a lot of information on Core War. Check
+out the ``Beginner's Guides'' section.
+
+@item http://vyznev.net/corewar/
+Ilmari Karonen is the author of the wonderful tutorial @cite{The beginner's
+guide to Redcode}.
+
+@end table
+
+@noindent
+These sites link to other sites that contain some more information
+about Core War. As mentioned elsewhere, the USENET newsgroup
+@code{rec.games.corewar} is a great place to meet fellow Core War
+enthusiasts to share strategies, get to know what is happening in
+the world of Core War, etc.
+
+@quotation Note
+ZINC uses a different dialect of Redcode than any of the ICWS
+standards, so you will have to do a bit of manual translation
+of warrior programmes you see elsewhere before they run within
+ZINC.
+@end quotation
+
+@noindent
+When you are comfortable with ZINC, do check out the specification
+in @ref{Core War Reference} to get the precise details of Core
+War and Redcode constructs as implemented by ZINC.

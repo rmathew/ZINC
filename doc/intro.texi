@@ -1,0 +1,138 @@
+@node Introduction
+@chapter Introduction
+
+This chapter introduces you to @acronym{ZINC, ZINC Is Not Corewar}. ZINC
+is an implementation of the game of ``Core War'' in which you write
+computer programmes whose aim is to seek and destroy other programmes written
+by your opponents.
+
+@menu
+* Overview:: An overview of ZINC and the game of Core War.
+* Invoking ZINC:: How to invoke @command{zinc}.
+* Using ZINC:: How to use ZINC.
+@end menu
+
+
+@node Overview
+@section Overview
+
+Core War is a game created by A. K. Dewdney in which you write computer
+programmes that run inside a simulated computer and that must seek and
+destroy similar programmes written by your opponents. The programmes
+(called ``warriors'') are written in a simple programming language called
+``Redcode'' and run in a simulator known as @acronym{MARS, Memory Array
+Redcode Simulator}. Redcode is a relatively low-level programming language
+and looks very similar to the assembly language for many microprocessors.
+The term ``core'' refers to the memory of the simulated computer
+(ferro-magnetic cores were used as the memory in older computers) and is
+the battleground where the warriors fight it out.
+
+@quotation Note
+If you are already familiar with the game of Core War, please note
+that ZINC @emph{does not} conform to any of the ICWS standards or
+drafts and in fact implements a completely different dialect of Redcode.
+See @ref{Rationale} for some of the reasons behind this decision. See
+@ref{Core War Guide} to get a quick feel for this dialect and @ref{Core
+War Reference} for the complete reference for this dialect.
+@end quotation
+
+If you are new to the game of Core War, you should first read
+@ref{Core War Guide}. @ref{Core War Reference} contains a complete reference
+for the Redcode dialect implemented by ZINC as well as the details of the
+rules of the game as implemented by ZINC. @ref{ZINC Internals} contains
+some design notes and implementation details of ZINC that can help you if
+you wish to modify it to suit your needs. @ref{Background Information}
+contains a short history of the game of Core War as well as pointers to
+sources of more information. It also explains why I chose to write ZINC.
+
+The rest of this chapter explains how to start ZINC and interact with it.
+
+
+@node Invoking ZINC
+@section Invoking ZINC
+
+ZINC is started by invoking the command @command{zinc}. This command
+can be invoked as @samp{@command{zinc} [@var{options}] @var{file1}
+[@var{file2}]}, where square brackets (@samp{[} and @samp{]}) indicate
+optional arguments. @var{file1} and @var{file2} should be paths to files
+containing warrior programmes. The extension in the names of these
+files does not matter though I personally use @samp{@file{.zinc}}.
+
+You must supply at least one warrior programme to ZINC. A warrior
+programme must be syntactically correct to be loaded successfully into
+ZINC. If you supply two warriors to ZINC, it simulates a battle between
+the two programmes. Otherwise the input warrior is loaded and run till
+either the maximum allowed cycles per simulation are exhausted or the
+warrior destroys itself.
+
+@command{zinc} accepts the following command-line options:
+@table @option
+
+@item -c
+Command-line interface only (no graphical user interface). Useful to
+execute a number of battles between the input warriors and see the
+outcome as quickly as possible.
+
+@item -d
+Dump input warrior programmes as they look after compilation and exit.
+Useful for debugging warrior programmes.
+
+@item -f
+Run the GUI in full-screen mode instead of the default windowed mode.
+
+@item -s
+Limit each warrior to a single task (ignore the @code{SPL} instruction).
+
+@end table
+
+
+@node Using ZINC
+@section Using ZINC
+
+ZINC supports a graphical user interface as well as a command-line-only
+interface (using the @option{-c} option to @command{zinc}). The command-line
+interface allows you to execute a number of battles (@math{10} by default)
+between the given warriors as quickly as possible and see the overall result
+of Core War played between the given warriors. The command-line
+interface is also useful in tournaments to quickly eliminate contenders.
+
+ZINC presents a very simple graphical user interface. The top part of
+the window shows some basic information about the loaded warriors and
+the respective instructions they are about to execute. This part is
+followed by a timer that indicates how much time is left before the
+maximum cycles allowed per battle are exhausted and the battle is
+declared a tie. Most of the window is taken up by a representation
+of the cells comprising the core. Each cell is colour-coded to represent
+the last warrior to modify the value stored there, if any. The cell
+representing the instruction about to be executed is highlighted with
+a border. The bottom of the window shows the status bar which indicates
+the current state of the battle and input keys that are recognised
+in that state.
+
+The graphical interface tries to synchronise the simulation in such
+a way that a battle takes around 10 seconds irrespective of the speed
+of the hosting machine. This is so that you can actually observe
+a battle unfold on your screen and see how the warriors behave in the
+battle.
+
+The graphical interface pauses ZINC after the warriors are loaded.
+You can start the battle by pressing @key{SPACE}. You can also pause a
+running battle by pressing @key{SPACE}. When a battle is paused,
+you can examine the contents of the core using the arrow keys. This is
+the inspection mode (which you can exit by pressing @key{ESC}). In this
+mode, you can force the programme counter of the currently executing
+task to point to the cell currently being inspected by pressing @key{ENTER}.
+When a battle is paused, you can step through the simulation a single
+cycle at a time by pressing the @key{ENTER} key. Inspection of core and
+single-stepping through the simulation are great ways of understanding
+warriors written by others or debugging your own warriors.
+
+Whether a battle is paused or running, you can force the warriors to be
+reloaded by pressing the @key{R} key. In these states, you can also
+exit ZINC by pressing @key{ESC}.
+
+There are some sample warriors in the @file{examples} folder of the
+ZINC distribution which you can use to try out ZINC before writing
+warrior programmes yourself. You should use these to get a feel for
+the ZINC user interface before testing out your own warriors.
+

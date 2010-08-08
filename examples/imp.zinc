@@ -1,0 +1,9 @@
+  nam "Imp" 
+  ver "1.0"
+  aut "A. K. Dewdney"
+
+  ; Blindly move through the core by copying the contents of the current
+  ; cell into the next cell.
+
+  mov $0, $1
+

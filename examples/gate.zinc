@@ -1,0 +1,8 @@
+  nam "Imp Gate"
+  ver "1.0"
+
+  ; Attempt to stall the progress of an Imp by continuously bombing a
+  ; location 10 cells back.
+
+  mov #0, $-10
+  jmp $-1

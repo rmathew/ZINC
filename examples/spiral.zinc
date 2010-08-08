@@ -1,0 +1,28 @@
+  nam "Imp Spiral"
+  ver "1.0"
+  aut "D. Nabutovsky"
+
+  ; Somewhat similar to Imp Ring.
+  ;
+  ; See Steven Morrell's Core War book for more details.
+
+  def step = 2667
+
+  spl $8
+  spl $4
+  spl $2
+  jmp $imp
+  jmp $(imp + step)
+  spl $2
+  jmp $(imp + step * 2)
+  jmp $(imp + step * 3)
+  spl $4
+  spl $2
+  jmp $(imp + step * 4)
+  jmp $(imp + step * 5)
+  spl $2
+  jmp $(imp + step * 6)
+  jmp $(imp + step * 7)
+
+imp:
+  mov $0, $step

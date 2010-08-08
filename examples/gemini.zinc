@@ -1,0 +1,31 @@
+  nam "Gemini"
+  aut "A. K. Dewdney"
+  ver "1.0"
+
+  ; Copy the programme over to a new location in core and then transfer
+  ; control to the copy. Do this continuously in the hopes of evading
+  ; bombs from other warriors.
+
+  org start
+
+  def PROG_SIZE = end - source
+  def LEAP = 101
+
+source:
+  dat #0
+
+target:
+  dat #(LEAP - (target - source))
+
+start:
+  mov @source, @target
+  skn $source, #(PROG_SIZE - 1)
+  jmp $jmp2copy
+  add #1, $source
+  add #1, $target
+  jmp $start
+
+jmp2copy:
+  mov #(LEAP - (target - source)), $(LEAP - (jmp2copy - target))
+  jmp $(LEAP - (jmp2copy - target))
+end:

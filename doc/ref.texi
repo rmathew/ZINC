@@ -1,0 +1,895 @@
+@node Core War Reference
+@chapter Core War Reference
+
+Core War is a game for programmers in which they write programmes
+(called ``warriors'') that compete for domination on an imaginary
+computer. The programmes are written in a low-level language called
+Redcode (see @ref{Redcode}). The imaginary computer is emulated by
+a tool called Memory Array Redcode Simulator or ``MARS'' (see
+@ref{MARS}).
+
+This chapter provides a detailed description of the game of Core War as
+implemented by ZINC. The description provided here is the @emph{intended}
+behaviour of ZINC and any deviations are most likely bugs in ZINC.
+
+@menu
+* MARS:: The emulator for Core War.
+* Redcode:: The programming language for Core War.
+@end menu
+
+
+@node MARS
+@section MARS
+
+This section provides a detailed description of MARS, the emulator for
+Core War.
+
+@menu
+* Architecture:: The architecture of the simulated computer.
+* Instruction Set:: The instruction set available to warriors.
+* Warrior Lifecycle:: How warriors are loaded and run by MARS.
+@end menu
+
+
+@node Architecture
+@subsection Architecture
+
+The computer simulated by MARS has a very simple architecture. It comprises
+a processor and a memory. It does not have any direct facilities for
+either input or output. The processor recognises a very simple instruction
+set (see @ref{Instruction Set}). It only supports integral calculations and
+does not have any support for floating-point calculations. The processor
+executes instructions stored in the memory.
+
+The memory is also known as ``core'' and comprises a set of individually
+addressable ``cells''. The addresses of the cells are non-negative integers
+beginning with @math{0} and continuing up to @var{CORE_SIZE} @minus{}
+@math{1}, where @var{CORE_SIZE} is the total number of cells in the core.
+For example, if there are 8,000 cells in the core, the addresses range
+from @math{0} to @math{7,999}. Each cell holds an instruction, including
+the operation code (``opcode'') representing the instruction, the operands
+for the instructions as well as the addressing modes (see
+@ref{Addressing Modes}) of the operands. A cell has the following structure:
+@verbatim
+  +------+-------+-----------+-------+-----------+
+  | code | modeA |    opA    | modeB |    opB    |
+  +------+-------+-----------+-------+-----------+
+@end verbatim
+
+@noindent
+The fields comprising a cell are:
+
+@table @code
+@item code
+The opcode of an instruction.
+@item modeA
+The addressing mode of the first operand of the instruction.
+@item opA
+The first operand of the instruction.
+@item modeB
+The addressing mode of the second operand of the instruction.
+@item opB
+The second operand of the instruction.
+@end table
+
+@noindent
+The @code{opA} field is used for denoting the source operand of an
+instruction, if any. The @code{opB} field is used for denoting the
+destination operand of an instruction. None of the fields in a cell can be
+directly accessed by any of the supported instructions. All the fields
+contain non-negative integers. The @code{opA} and @code{opB} fields always
+contain ``normalised'' non-negative integers (see @ref{Normalisation}).
+
+The processor executes instructions in ``cycles'' -- in every cycle, the
+processor fetches an instruction stored in a cell, decodes the opcode,
+evaluates the operands, fetches the required data, performs the intended
+operation and stores the result into the core if needed. MARS usually
+limits the maximum number of emulated cycles.
+
+The processor maintains a queue of ``processes''. A process represents
+a loaded programme. Each process has a queue of ``tasks''. A task
+represents a stream of execution within a process. Each task has
+a programme counter (PC) that stores the address of the cell that
+contains the instruction that should be executed next for the task. The
+PC always stores a normalised value (see @ref{Normalisation}). In each cycle,
+the processor picks up the process at the head of the processes queue and
+picks up the task at the head of the picked-up process's tasks queue. It
+then executes the instruction indicated by the PC of the selected task.
+An instruction always specifies the value that the PC of the task should
+have after the instruction is executed. After the instruction is executed,
+the processor puts the task at the end of the tasks queue of the
+respective process and puts the process at the end of the processes queue.
+If the processor is asked to execute an illegal instruction in the
+context of a task, it removes the task from the respective process's
+tasks queue. If the tasks queue of a process becomes empty, the process
+itself is removed from the processes queue.
+
+MARS creates a process with a single task for each of the loaded warriors.
+MARS restricts the maximum number of warriors that can be loaded as well
+as the maximum number of tasks created for a single warrior. MARS usually
+stops the simulation as soon as there is only a single surviving warrior
+among multiple loaded warriors or the maximum limit on the number of
+cycles to simulate is reached.
+
+
+@node Instruction Set
+@subsection Instruction Set
+
+This sub-section provides a detailed description of the instruction
+set of the computer emulated by MARS.
+
+@menu
+* Instruction Format:: The format of an instruction.
+* Normalisation:: The normalisation of data.
+* Addressing Modes:: The mode of an instruction operand.
+* DAT:: The DAT instruction.
+* MOV:: The MOV instruction.
+* ADD:: The ADD instruction.
+* SUB:: The SUB instruction.
+* MUL:: The MUL instruction.
+* DIV:: The DIV instruction.
+* MOD:: The MOD instruction.
+* JMP:: The JMP instruction.
+* JMZ:: The JMZ instruction.
+* JMN:: The JMN instruction.
+* SKL:: The SKL instruction.
+* SKE:: The SKE instruction.
+* SKN:: The SKN instruction.
+* SKG:: The SKG instruction.
+* SPL:: The SPL instruction.
+@end menu
+
+
+@node Instruction Format
+@subsubsection Instruction Format
+
+An instruction in a cell comprises the operation code (``opcode'') of the
+instruction as well as its operands. Each instruction has a unique mnemonic
+(e.g. @code{ADD}, @code{MOV}, etc.) that is used to refer to it in
+documentation and warrior code. The opcode of the @code{DAT} instruction
+(see @ref{DAT}) must be @math{0}; the opcode of the other instructions is
+not specified here and is implementation-dependent.
+
+Each operand has a non-negative integral value that is normalised (see
+@ref{Normalisation}) and an addressing mode (see @ref{Addressing Modes})
+that describes how to use the value to obtain the data needed by the
+instruction. Each cell stores two operands along with their addressing modes,
+though some instructions might use only one of the operands. The operands
+are denoted as @code{opA} and @code{opB}. For instructions having source
+and destination operands, @code{opA} is always used as the source operand
+and @code{opB} as the destination operand. The value of a cell used by the
+arithmetic instructions (@code{ADD}, @code{SUB}, etc.) and the comparison
+instructions (@code{SKN}, @code{JMZ}, etc.) is always the value of the
+@code{opB} field of the cell. Only the @code{MOV} instruction (see @ref{MOV})
+accesses the contents of the entire cell, including the opcode.
+
+An operand always specifies the address of a cell. For operands in
+immediate addressing mode (see @ref{Addressing Modes}), the cell
+is a assumed to be a non-existent cell with an invalid address (written as
+@samp{@code{VOID}}) containing the given value in its @code{opB} field. An
+instruction might use either the address of a cell as given by an operand
+(e.g. the @code{JMP} instruction) or the contents of the cell whose address
+is given by the operand (e.g. the @code{ADD} instruction). This makes certain
+instruction-operand combinations illegal -- for example, a @code{JMP}
+instruction can not have an operand with immediate addressing mode as the
+address of the non-existent cell is an invalid address.
+
+The operands of an instruction are always evaluated before the instruction
+is executed. Instructions like @samp{@code{ADD #1, $0}} are valid and result,
+in this particular case, in the cell being modified to the equivalent of
+@samp{@code{DAT #1}}.
+
+In the following specifications of each of the recognised instructions,
+we use a simple pseudo-code language to precisely specify the behaviour
+of the instruction. If @var{X} represents the address of a cell,
+@var{X}.@var{Y} represents the value of the @var{Y} field of the cell.
+The @samp{@code{:=}} operator denotes assignment after normalisation (see
+@ref{Normalisation}). The programme counter of the task in whose context
+the instruction is executing is denoted by @var{PC}. The arithmetic
+operations are denoted by their usual operators with @samp{@code{%}}
+denoting the modulus operation. @samp{@code{addrA}} and @samp{@code{addrB}}
+denote the addresses of the cells indicated by the @code{opA} and @code{opB}
+operands respectively and @samp{@code{valA}} and @samp{@code{valB}} denote
+the values respectively used from these cells (see @ref{Addressing Modes}
+for how these are calculated).
+
+
+@node Normalisation
+@subsubsection Normalisation
+
+Normalisation refers to the restricting of an integral value to the
+range @math{0} to @var{CORE_SIZE} @minus{} @math{1}, where @var{CORE_SIZE}
+is the total number of cells in the core. For negative values,
+@var{CORE_SIZE} is repeatedly added to the value till it comes within
+the range given above. For positive values outside of this range,
+@var{CORE_SIZE} is repeatedly subtracted from the value till it comes
+within the range.
+
+Normalisation is applied when storing a value to the @code{opA} and
+@code{opB} fields of a cell and when updating the @code{PC} of a task. The
+net effect of normalisation is to given the illusion of a circular core
+for all practical purposes, that is, the cell with the address @code{0}
+seems to immediately follow the cell with the address @samp{@var{CORE_SIZE}
+@minus{} @code{1}} and the latter seems to immediately precede the former.
+
+
+@node Addressing Modes
+@subsubsection Addressing Modes
+
+An operand to an instruction has an addressing mode that denotes
+how to interpret the value of the operand to obtain the address
+of the intended cell. The following addressing modes are recognised:
+
+@table @dfn
+
+@item Immediate
+The value of the operand itself is the needed datum. The address of the
+intended cell is @code{VOID}. This is denoted in documentation and
+programme code by an octothorpe or a hash sign (@samp{#}). For example,
+@samp{@code{DAT #1234}}.
+
+@item Direct
+The value of the operand is the offset of the intended cell from the
+programme counter after normalisation. This is denoted in documentation
+and programme code by a dollar sign (@samp{$}). For example,
+@samp{@code{JMP $5678}}.
+
+@item Indirect
+The value of the operand is the offset of a cell from the programme counter,
+whose @code{opB} field contains the offset @emph{from that cell} of the
+intended cell. This is denoted in documentation and programme code by an
+at sign (@samp{@@}). For example, @samp{@code{SPL @@3571}}.
+
+@end table
+
+It should be noted that operands can only specify addresses relative
+to the programme counter and can never contain absolute addresses. This
+essential property allows warrior programmes to be loaded into any region
+in the core and still work correctly.
+
+The following illustrates how @code{addrA} and @code{valA} is calculated from
+@code{opA} for a cell pointed to by @code{PC}:
+@verbatim
+  if (PC.modeA = IMMEDIATE)
+  {
+    addrA := VOID
+    valA := PC.opA
+  }
+  else if (PC.modeA = DIRECT)
+  {
+    addrA := PC + PC.opA
+    valA := addrA.opB
+  }
+  else
+  {
+    /* PC.modeA = INDIRECT */
+    addrA := PC + PC.opA
+    addrA := addrA + addrA.opB
+    valA := addrA.opB
+  }
+@end verbatim
+@noindent
+The method to calculate @code{addrB} and @code{valB} from @code{opB} is
+similarly obtained by substituting @samp{@code{opB}} for @samp{@code{opA}},
+@samp{@code{addrB}} for @samp{@code{addrA}} and @samp{@code{valB}} for
+@samp{@code{valA}} in the above pseudo-code.
+
+
+@node DAT
+@subsubsection DAT
+
+Stores data. This instruction is not executable -- if the processor
+encounters this instruction at the cell indicated by the PC of a task,
+it terminates the task. This instruction only takes a single operand
+in immediate addressing mode in the @code{opB} field. The opcode of
+this instruction must be @math{0}.
+
+
+@node MOV
+@subsubsection MOV
+
+Moves the entire contents of one cell to another. The source operand
+can have any addressing mode. The destination operand can not have immediate
+addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (addrA = VOID)
+  {
+    addrB.code := 0  /* DAT */
+    addrB.modeA := IMMEDIATE
+    addrB.opA := 0
+    addrB.modeB := IMMEDIATE
+    addrB.opB := valA
+  }
+  else
+  {
+    addrB.code := addrA.code
+    addrB.modeA := addrA.modeA
+    addrB.opA := addrA.opA
+    addrB.modeB := addrA.modeB
+    addrB.opB := addrA.opB
+  }
+  PC := PC + 1
+@end verbatim
+
+
+@node ADD
+@subsubsection ADD
+
+Adds the contents of the source cell to the contents of the destination cell.
+The source operand can have any addressing mode; the destination operand can
+not have immediate addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  addrB.opB := addrB.opB + valA
+  PC := PC + 1
+@end verbatim
+
+
+@node SUB
+@subsubsection SUB
+
+Subtracts the contents of the source cell from the contents of the destination
+cell. The source operand can have any addressing mode; the destination operand
+can not have immediate addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  addrB.opB := addrB.opB - valA
+  PC := PC + 1
+@end verbatim
+
+
+@node MUL
+@subsubsection MUL
+
+Multiplies the contents of the destination cell by the contents of the source
+cell. The source operand can have any addressing mode; the destination operand
+can not have immediate addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  addrB.opB := addrB.opB * valA
+  PC := PC + 1
+@end verbatim
+
+
+@node DIV
+@subsubsection DIV
+
+Divides the contents of the destination cell by the contents of the source
+cell. The source operand can have any addressing mode; the destination operand
+can not have immediate addressing mode. If the contents of the source
+operand are @math{0}, the task is terminated. The division operation is
+truncating integral division.
+
+The instruction has the following effect:
+@verbatim
+  addrB.opB := addrB.opB / valA
+  PC := PC + 1
+@end verbatim
+
+
+@node MOD
+@subsubsection MOD
+
+Divides the contents of the destination cell by the contents of the source
+cell and stores the remainder in the destination cell. The source operand
+can have any addressing mode; the destination operand can not have immediate
+addressing mode. If the contents of the source operand are @math{0}, the task
+is terminated.
+
+The instruction has the following effect:
+@verbatim
+  addrB.opB := addrB.opB % valA
+  PC := PC + 1
+@end verbatim
+
+
+@node JMP
+@subsubsection JMP
+
+Jumps to the address given by the destination operand (@code{opB}), which
+should not be in immediate addressing mode. The source operand is ignored.
+
+The instruction has the following effect:
+@verbatim
+  PC := addrB
+@end verbatim
+
+
+@node JMZ
+@subsubsection JMZ
+
+Jumps to the address given by the destination operand, if the contents of
+the source operand is @math{0}. The source operand can have any addressing
+mode; the destination operand can not have the immediate addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA = 0)
+  {
+    PC := addrB
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node JMN
+@subsubsection JMN
+
+Jumps to the address given by the destination operand, if the contents of
+the source operand is @emph{not} @math{0}. The source operand can have any
+addressing mode; the destination operand can not have the immediate addressing
+mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA > 0)
+  {
+    PC := addrB
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node SKL
+@subsubsection SKL
+
+Skips the next instruction if the contents of the source operand is
+less than the contents of the destination operand. Both the operands can have
+any addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA < valB)
+  {
+    PC := PC + 2
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node SKE
+@subsubsection SKE
+
+Skips the next instruction if the contents of the source operand is
+equal to the contents of the destination operand. Both the operands can have
+any addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA = valB)
+  {
+    PC := PC + 2
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node SKN
+@subsubsection SKN
+
+Skips the next instruction if the contents of the source operand is @emph{not}
+equal to the contents of the destination operand. Both the operands can have
+any addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA <> valB)
+  {
+    PC := PC + 2
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node SKG
+@subsubsection SKG
+
+Skips the next instruction if the contents of the source operand is
+greater than the contents of the destination operand. Both the operands can
+have any addressing mode.
+
+The instruction has the following effect:
+@verbatim
+  if (valA > valB)
+  {
+    PC := PC + 2
+  }
+  else
+  {
+    PC := PC + 1
+  }
+@end verbatim
+
+
+@node SPL
+@subsubsection SPL
+
+Splits the process to create a new task at the given destination operand,
+assuming the process is within the limit for the maximum number of tasks
+allowed per process. The destination operand can not have immediate
+addressing mode. The source operand is ignored. The newly-created task is
+added to the process's tasks queue @emph{after} the current task so that
+the current task will get a chance to execute another instruction before
+the newly created task is scheduled. The @code{PC} for the current task
+is incremented and normalised. The @code{PC} for the newly-created task
+is set to @code{addrB}.
+
+
+@node Warrior Lifecycle
+@subsection Warrior Lifecycle
+
+Warrior programmes are written in the Redcode programming language
+(see @ref{Redcode}). MARS can either use a separate assembler to
+compile these programmes into a simpler loader format or have a
+built-in assembler that compiles these programmes and loads them
+into the core if the compilation was successful. (ZINC uses a built-in
+assembler.)
+
+MARS loads a warrior programme into a random region of the core.
+MARS usually limits the maximum number of instructions that a warrior
+programme can have. It also usually limits the maximum number of
+warriors that can be simultaneously loaded into the core. If more than
+one warrior is loaded into the core, MARS guarantees a minimum initial
+separation between the loaded warriors that is at least as much as the
+maximum number of instructions allowed per warrior. This ensures that
+no warrior starts off with corrupted instructions from an overlaid
+warrior.
+
+For each loaded warrior, MARS creates a process with a single task
+in its tasks queue. The @code{PC} of this task is set to the initial
+instruction in the warrior programme as indicated by it (see @ref{ORG}).
+
+After all the warriors are loaded into the core, MARS starts the simulation
+and continues till either the limit on the maximum number of cycles to
+emulate is reached or only one process remains among multiple warriors
+loaded initially, whichever occurs first. Each such simulation run is
+termed a ``battle''. Several such battles among the same set of loaded
+warriors is termed a ``war''.
+
+During the course of a battle, a warrior process might add tasks to its
+tasks queue using the @code{SPL} instruction (see @ref{SPL}). Tasks might
+be deleted from the tasks queue if it causes the processor to attempt to
+execute an invalid instruction. If the tasks queue of a process becomes
+empty, the corresponding warrior is deemed to have died and the process
+is removed from the processor's processes queue.
+
+At the end of a battle, MARS awards points to all the loaded warriors
+according to the following formula:
+@quotation
+@math{(W^2 - 1) / S}
+@end quotation
+@noindent
+where @var{W} is the total number of warriors loaded at the beginning of
+the battle and @var{S} is the number of surviving warriors at the end of
+the battle. After the completion of all the battles executed in a given
+run of MARS, the warrior that has gathered the most points is declared
+the winner of Core War.
+
+
+@node Redcode
+@section Redcode
+
+This section provides a detailed reference for the Redcode programming
+language.
+
+@menu
+* Input Format:: The input format of Redcode programmes.
+* Assembler Directives:: Assembler directives for the Redcode assembler.
+* Pre-defined Constants:: Pre-defined constants in the Redcode assembler.
+* Grammar:: The grammar for parsing Redcode programmes.
+@end menu
+
+
+@node Input Format
+@subsection Input Format
+
+Redcode programmes are stored in ordinary text files with line-ending
+characters specific to the hosting platform (for example, a Carriage Return
+followed by a Line Feed on Windows). The extension in the name of the input
+file does not matter. A single input file specifies the instructions
+comprising a single warrior. The Redcode assembler processes a line at a time
+of the input text, since no Redcode construct spans multiple input lines.
+Leading and trailing spaces in an input line are ignored. Any characters that
+follow a semi-colon character (@samp{;}), including the semi-colon itself,
+till the end of an input line is ignored as a comment. Empty input lines
+(without any characters left after removing leading and trailing spaces as
+well as comments) are ignored. Non-empty input lines must contain an
+instruction, an assembler directive or a label.
+
+An @dfn{instruction} represents an instruction recognised by
+the processor emulated by MARS, including the instruction mnemonic and
+the operands with their respective addressing mode indicators. Multiple
+operands are separated by a comma (@samp{,}) character. For example,
+@samp{@code{DAT #1234}}, @samp{@code{ADD $1234, @@5678}}, etc. If two
+operands are present, the first operand is considered the source operand
+and the second operand is considered the destination operand. Each instruction
+is compiled into a cell in the core; successive instructions are compiled
+into successive cells in the core. Instruction mnemonics are case-insensitive.
+
+An @dfn{assembler directive} is a request to the assembler itself and is
+not compiled into a cell in the core. Assembler directives affect the
+way the assembler processes the input file. See @ref{Assembler Directives}
+for details. Assembler directives are case-insensitive.
+
+A @dfn{label} is an identifier that represents the address of a cell in core.
+The identifier can only have alpha-numeric and underscore (@samp{_})
+characters and must be followed by a colon character (@samp{:}). The
+label identifier is case-insensitive and can not be an identifier reserved
+for instruction mnemonics or assembler directives. The address represented
+by a label is the address of the cell into which a following instruction
+would be compiled into. A label can not be defined multiple times within
+a single warrior programme. A label can be used before being defined.
+
+The operand of an instruction can be a constant integer, a label, an
+explicitly-defined symbol (see @ref{DEF}) or an arithmetic expression
+involving any of these. Expressions support the usual arithmetic operators
+as well as grouping of factors using parentheses (@samp{(} and @samp{)}).
+The multiplication (@samp{*}), division (@samp{/}) and modulus (@samp{%})
+operations have a higher precedence than the addition (@samp{+}) and
+subtraction (@samp{@minus{}}) operations. In an expression, a label has
+a value equal to @samp{@var{label} @minus{} @var{current}}, where
+@var{current} is the address of the cell into which the current instruction
+will be compiled into. All operand values are normalised (see
+@ref{Normalisation}) before being stored in the respective fields of the
+current cell.
+
+A warrior programme begins execution at the first instruction in its
+body, unless it explicitly specifies an alternate starting address using
+the @code{ORG} assembler directive (see @ref{ORG}).
+
+See @ref{Grammar} for the complete specification of the syntax of a
+Redcode programme input file.
+
+
+@node Assembler Directives
+@subsection Assembler Directives
+
+Assembler directives are instructions for the Redcode assembler itself,
+instead of the processor emulated by MARS. They affect the meta-data
+about the warrior shared between the Redcode assembler and MARS.
+
+@menu
+* ORG:: The ORG assembler directive.
+* DEF:: The DEF assembler directive.
+* NAM:: The NAM assembler directive.
+* VER:: The VER assembler directive.
+* AUT:: The AUT assembler directive.
+@end menu
+
+
+@node ORG
+@subsubsection ORG
+
+The @code{ORG} assembler directive specifies an alternate address for
+starting the execution of a warrior programme other than the default
+first address. It takes a single operand that can be a constant integer,
+a label, an explicitly-defined symbol or an expression involving these.
+If an @code{ORG} directive appears multiple times in a programme, only
+the last directive is effective.
+
+
+@node DEF
+@subsubsection DEF
+
+The @code{DEF} assembler directive is used to explicitly define an
+identifier that can be used elsewhere. This can be used to associate
+meaningful symbols with constants or with complex expressions. The
+syntax of this directive is:
+@quotation
+@code{DEF} @var{identifier} @code{=} @var{expression}
+@end quotation
+
+@noindent
+@var{expression} denotes a label, a constant integer, another
+explicitly-defined identifier or an expression involving these.
+If an identifier is defined multiple times in a programme, only
+the last definition takes effect.
+
+
+@node NAM
+@subsubsection NAM
+
+The @code{NAM} assembler directive is used to specify the name
+of the warrior programme as it appears in the user interface for
+MARS. The desired name is specified within double quotes. The
+syntax of this directive is:
+@quotation
+@code{NAM} @code{"}@var{name}@code{"}
+@end quotation
+
+@noindent
+If the warrior name is specified multiple times in a programme,
+only the last name takes effect.
+
+
+@node VER
+@subsubsection VER
+
+The @code{VER} assembler directive is used to specify the version
+of the warrior programme as it appears in the user interface for
+MARS. The desired version is specified within double quotes. The
+syntax of this directive is:
+@quotation
+@code{VER} @code{"}@var{version}@code{"}
+@end quotation
+
+@noindent
+If the warrior version is specified multiple times in a programme,
+only the last version takes effect.
+
+
+@node AUT
+@subsubsection AUT
+
+The @code{AUT} assembler directive is used to specify the author
+of the warrior programme as it appears in the user interface for
+MARS. The desired name is specified within double quotes. The
+syntax of this directive is:
+@quotation
+@code{AUT} @code{"}@var{author}@code{"}
+@end quotation
+
+@noindent
+If the author name is specified multiple times in a programme,
+only the last name takes effect.
+
+
+@node Pre-defined Constants
+@subsection Pre-defined Constants
+
+The Redcode assembler pre-defines a set of identifiers before assembling
+a warrior programme representing the environment in which the
+warrior programme would be executed. This helps authors of warrior
+programmes to write such programmes without hard-coding assumptions
+about the execution environment. These identifiers can be treated just
+like an explicitly-defined identifier defined within the warrior programme.
+
+The pre-defined constants in the Redcode assembler are:
+
+@table @code
+@item CORE_SIZE
+The total number of cells in the core.
+
+@item MAX_INSNS
+The maximum number of instructions allowed per warrior programme.
+
+@item MAX_TASKS
+The maximum number of tasks allowed per warrior process.
+
+@item MAX_CYCLES
+The maximum number of cycles for which MARS will continue the simulation.
+
+@item MIN_DISTANCE
+The minimum number of cells separating two warrior programmes in the core.
+
+@end table
+
+
+@node Grammar
+@subsection Grammar
+
+This sub-section presents the complete syntax of a Redcode programme
+input file using a semi-formal grammar. The grammar is intentionally
+very simple to allow assemblers to be created with simple lexical
+analysers and parsers that need a single look-ahead token. In the following
+grammar, non-terminals symbols are written in lowercase letters while
+terminal symbols are written in uppercase letters. Comments appear delimited
+by @samp{/*} and @samp{*/}. Characters representing themselves appear within
+single quotes (@samp{'}). The production for a non-terminal is listed after
+a colon (@samp{:}); multiple productions are separated by vertical bars
+(@samp{|}). The empty production is denoted by @code{EMPTY}.
+
+The grammar used for parsing Recode programmes is the following:
+@verbatim
+  warrior_programme:
+    line_list EOF
+
+  line_list:
+    line [CR LF]+
+  | line [CR LF]+ line_list
+
+  line:
+    instruction
+  | directive
+  | label
+
+  instruction:
+    DAT '#' factor
+  | MOV operand ',' address
+  | ADD operand ',' address
+  | SUB operand ',' address
+  | MUL operand ',' address
+  | DIV operand ',' address
+  | MOD operand ',' address
+  | JMP address
+  | JMZ operand ',' address
+  | JMN operand ',' address
+  | SKL operand ',' operand
+  | SKE operand ',' operand
+  | SKN operand ',' operand
+  | SKG operand ',' operand
+  | SPL address
+
+  directive:
+    ORG expression
+  | NAM STRING
+  | VER STRING
+  | AUT STRING
+  | DEF IDENTIFIER '=' expression
+
+  label:
+    IDENTIFIER ':'
+
+  operand:
+    '#' factor
+  | address
+
+  address:
+    addr_mode factor
+
+  addr_mode:
+    '$'
+  | '@'
+
+  factor:
+    '(' expression ')'
+  | '-' factor
+  | NUMBER
+  | IDENTIFIER
+
+  expression:
+    expression '+' term
+  | expression '-' term
+  | term
+
+  /*
+   * Without left-recursion :-
+   * 
+   *   expression:
+   *     term expr_rest
+   *
+   *   expr_rest:
+   *     '+' term expr_rest
+   *   | '-' term expr_rest
+   *   | EMPTY
+   */
+
+  term:
+    term '*' factor
+  | term '/' factor
+  | term '%' factor
+  | factor
+
+  /*
+   * Without left-recursion :-
+   * 
+   *   term:
+   *     factor term_rest
+   *
+   *   term_rest:
+   *     '*' factor term_rest
+   *   | '/' factor term_rest
+   *   | '%' factor term_rest
+   *   | EMPTY
+   */
+@end verbatim

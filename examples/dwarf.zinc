@@ -1,0 +1,15 @@
+  nam "Dwarf"
+  ver "1.0"
+  aut "A. K. Dewdney"
+
+  ; Bomb every fourth cell in the core with a "DAT #0".
+
+  org start
+
+target:
+  dat #0
+
+start:
+  add #4, $target
+  mov #0, @target
+  jmp $start

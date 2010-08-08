@@ -1,0 +1,135 @@
+@node ZINC Internals
+@chapter ZINC Internals
+
+This chapter provides a short overview of the implementation details
+of ZINC as of version @value{VERSION}. You should read this chapter
+if you wish to study the source code for ZINC and perhaps modify it
+to suit your own needs.
+
+@menu
+* Implementation Overview:: A brief overview of the implementation.
+* Assembler Implementation:: How the Redcode assembler is implemented.
+* Simulator Implementation:: How the simulator (MARS) is implemented.
+* Interface Implementation:: How the user interface is implemented.
+@end menu
+
+
+@node Implementation Overview
+@section Implementation Overview
+
+ZINC is a relatively simple programme that is implemented in the C
+programming language and that uses the @uref{http://www.libsdl.org/,Simple
+DirectMedia Layer} (SDL) for its graphical interface. It has a very
+simple build system controlled by a top-level @file{Makefile}. All of its
+source code is present within the @file{src} sub-folder of the source
+distribution. The source code conforms to the @samp{C99} standard for the
+C programming language. A compiler that supports minimal C99 features like
+@file{<stdint.h>} support, mixed declarations and statements and
+@samp{//}-style comments should be able to build ZINC. The source code
+roughly follows the GNU Coding Standard. All the @file{Makefile}
+files have been written for GNU Make 3.79.1 or better and assume GNU
+Compiler Collection (GCC) 3.3 or better. These assumptions can easily be
+overcome should you wish to do so. All of the documentation source is present
+within the @file{doc} sub-folder of the source distribution and is meant
+to be processed by a recent version of GNU Texinfo. If you want to create
+the PDF version of the manual, you must have a @TeX{} distribution installed
+on your machine (I use the tetex distribution created by Thomas Esser
+-- visit @uref{http://www.tug.org/} for getting an appropriate distribution
+for your system if your system doesn't already have @TeX{} installed on it).
+The @file{examples} sub-folder contains some sample warrior programmes.
+
+The implementation of ZINC is modular, with each module implemented within
+a single @file{.c} file and with a corresponding @file{.h} file that exposes
+the interface to it. @file{zinc.c} is the main driver module that processes
+options, initialises everything else, etc. @file{zasm.c} contains the
+Redcode assembler (see @ref{Assembler Implementation}) assisted by the
+symbol-table module in @file{sym.c} and the expressions implementation
+module in @file{expr.c}. @file{exec.c} contains the simulator implementation
+(see @ref{Simulator Implementation}). @file{sdlui.c} contains the
+graphical user interface implementation (see @ref{Interface Implementation}).
+@file{sdltxt.c} contains a simple module for showing text using SDL. It
+embeds portions of the Linux @code{console8x16} font to display characters
+within the ASCII code range 32 to 126 that covers most of the text to be shown
+in English. Note that ZINC does not have any support for internationalisation
+and localisation. @file{dump.c} is a simple module to get a human-readable
+form of the contents of a cell in core.
+
+Most of ZINC does not assume a limit on the number of loaded warriors
+@emph{except} for two critical modules -- the main driver module and
+the graphical user interface module. These assume that only up to two
+warriors can be loaded into ZINC. The driver can be easily modified
+to overcome this limitation, but it looks very difficult to modify
+the graphical user interface (the actual interface, not its implementation)
+to show more than two warriors at a time without severely limiting its
+utility. For this reason, ZINC does not support the ``melee'' mode of Core
+War.
+
+There are no clever optimisations in the current ZINC implementation
+and the source code is quite simple and straightforward. Even such a
+simple implementation provides a good enough performance on older PCs
+and therefore I decided not to trade simplicity of code for barely
+perceptible performance improvements. In any case, simpler code is
+easier to maintain and lends itself to better optimisation opportunities
+for a compiler.
+
+
+@node Assembler Implementation
+@section Assembler Implementation
+
+The assembler is a very simple two-pass assembler. The entry into this
+module is via the @code{assemble_warrior} function. The first pass is
+implemented by the @code{do_first_pass} function and the second pass is
+implemented by the @code{do_second_pass} function.
+
+The first pass reads in the input file a line at a time using the
+@code{get_line} function and breaks a line into tokens using the
+@code{get_token} function. These tokens are fed to a simple recursive-descent
+parser that recognises the grammar given in @ref{Grammar}. Compiled 
+(and possibly incomplete) instructions are held in a temporary FIFO queue
+pointed to by @code{insns_head}.
+
+The second pass takes the compiled instructions from the temporary
+instructions queue and evaluates all expressions (now that the values
+of all labels and explicitly defined identifiers are known) and normalises
+the operand values. The completed instructions are added to the
+instructions array of the warrior structure that was the argument to
+@code{assemble_warrrior}. The temporary instructions queue is freed after
+this pass.
+
+
+@node Simulator Implementation
+@section Simulator Implementation
+
+The simulator is a straightforward interpreter that uses a giant
+@code{switch} statement to interpret instructions. The entry into
+this module is via the @code{exec_battle} function.
+
+The imaginary cell assumed for immediate addressing mode operands
+is pointed by @code{tmp_cell}.
+
+
+@node Interface Implementation
+@section Interface Implementation
+
+The graphical user interface implementation is the ugliest part of
+ZINC with the most hard-coded arbitrary assumptions (a display
+size of 640x480 pixels, a font size of 8x16 pixels, up to two
+warriors, etc.). I apologise for the mess in this module and will
+try to make it better in subsequent versions of ZINC.
+
+Note that the graphical interface intentionally slows down the
+simulation so that 1,00,000 cycles take around 10 seconds irrespective
+of the speed of the machine. This is so that a human can actually
+watch a battle in progress and get a picture of the behaviour of a warrior
+in a battle. The command-line interface does not impose such a slowdown
+and even on a slower and older machine, a battle gets over almost as soon
+as you press the @key{ENTER} key after typing the command.
+
+A minor optimisation that has a big payoff in the graphical interface
+is to not redraw the entire display after every cycle when running the
+battle simulation, but to queue updates for around 100 cycles before
+refreshing the display. This optimisation is not applied when the battle
+is paused and the user is single-stepping through the simulation. I found
+that a major cause of the slowdown in the graphical interface was the time
+taken to repaint the screen and batched updates dramatically improved the
+performance without affecting the user experience in a negative way.

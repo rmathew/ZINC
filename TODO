@@ -1,0 +1,11 @@
+These are some of the things to do for ZINC:
+
+  Support core sizes other than 8000.
+  Support resolutions other than 640x480.
+  Improve documentation.
+  Write testcases.
+  Add autotools-based portability support.
+  Improve option-processing.
+  Better assembler diagnostic messages.
+  Faster execution, use lesser resources.
+  Conversion of existing Core War benchmarks.

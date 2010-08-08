@@ -1,0 +1,6 @@
+  nam "Wait"
+  ver "1.0"
+
+  ; The simplest warrior. It just sits in one place.
+
+  jmp $0

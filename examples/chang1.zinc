@@ -1,0 +1,30 @@
+  nam "Chang1"
+  aut "Morrison J. Chang"
+  ver "1.0"
+
+  ; The runner-up in the first ever Core War tournament.
+  ;
+  ; Uses a combination of an Imp Factory, an Imp Gate and regular bombing.
+
+  org start
+
+kill_imps:
+  mov #0, $-1
+  jmp $kill_imps
+
+bomb_target:
+  dat #9
+
+start:
+  spl $kill_imps
+
+  spl $imp_factory
+  add #-16, $bomb_target
+  mov #0, @bomb_target
+  jmp $start
+
+imp_factory:
+  spl $imp
+  jmp $imp_factory
+imp:
+  mov $0, $1
